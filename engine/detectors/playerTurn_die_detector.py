@@ -50,7 +50,7 @@ class PlayerTurnDieDetector:
 
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours:
-            return None
+            return [], []
 
         #convex houl
         hulls = [cv2.convexHull(cnt) for cnt in contours]
