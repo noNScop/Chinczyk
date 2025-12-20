@@ -3,7 +3,7 @@ import cv2
 from pathlib import Path
 from tqdm.auto import tqdm
 
-from helpers import input_videos
+from helpers import input_videos, find_main_folder
 
 from detectors.pawn_detector import PawnDetector
 
@@ -52,9 +52,11 @@ class VideoOverlay:
 
 def main():
     videos = input_videos()
+    main_folder = find_main_folder()
+
     print("Videos to be processed:", *videos, sep="\n")
 
-    os.makedirs("output", exist_ok=True)
+    os.makedirs(os.path.join(main_folder, "output"), exist_ok=True)
 
     for video in videos:
         video_name = Path(video).name
@@ -67,7 +69,10 @@ def main():
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        output_writer = cv2.VideoWriter(f"output/{video_name}", fourcc, fps, (width, height))
+        output_writer = cv2.VideoWriter(os.path.join(main_folder, 'output', video_name), fourcc, fps, (width, height))
+        if not output_writer.isOpened():
+            print("VideoWriter failed to open:", f"output/{video_name}")
+            continue
 
         for _ in tqdm(range(total_frames), desc="Processing video"):
             ret, frame = cap.read()
