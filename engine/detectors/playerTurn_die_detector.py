@@ -21,7 +21,7 @@ class PlayerTurnDieDetector:
             return 'marker'
         elif area > 2700 and area < 4500 and circle_similarity >=4 and circle_similarity <= 6:
             return 'die'
-        elif circle_similarity > 8 and area > 4500:
+        elif circle_similarity > 5 and area > 4500:
             return 'reflection'
         else:
             return 'none'
