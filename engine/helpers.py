@@ -55,7 +55,7 @@ def input_videos():
                 videos = []
                 break
             
-            videos.append(all_videos_paths[n])
+            videos.append(all_videos_paths[n -1])
             observed.add(n)
 
         if not videos:
