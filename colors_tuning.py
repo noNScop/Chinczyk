@@ -50,7 +50,9 @@ def load_img(path, frame_idx=0):
 
 folder = os.path.dirname(os.path.abspath(__file__))
 file_fol = os.path.join(folder, "data", FILE)
-img_hsv = load_img(file_fol)
+img_bgr = load_img(file_fol)
+img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+
 
 
 
