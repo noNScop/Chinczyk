@@ -2,7 +2,7 @@
 from pathlib import Path
 import os
 
-def find_main_folder():
+def find_main_folder(): # function to make for both of us convenient storing things in folders in project (needed because i dont have current working dir as project dir) hope I did not break sth for you
     #if data in current working folder
     cwd_data = Path.cwd() / "data"
     if cwd_data.is_dir():
