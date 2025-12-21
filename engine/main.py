@@ -9,6 +9,7 @@ from helpers import input_videos, find_main_folder
 from detectors.pawn_detector import PawnDetector
 from detectors.playerTurn_die_detector import PlayerTurnDieDetector
 from detectors.die_handler import Die_handler
+from detectors.board_detector import BoardDetector
 
 
 class GameState:
@@ -56,6 +57,7 @@ class VideoOverlay:
     
     @staticmethod
     def draw_die(frame, pts, die_handler : Die_handler):
+        frame = frame.copy()
 
         cv2.polylines(frame, [pts], True, (0, 255, 0), 2)
         num = die_handler.get_number()
@@ -90,6 +92,8 @@ class VideoOverlay:
     
     @staticmethod
     def draw_reflection(frame, pts):
+        frame = frame.copy()
+
         cv2.polylines(frame, [pts], True, (255, 255, 0), 2)  # cyan outline
         cx, cy = np.mean(pts, axis=0).astype(int)
         cv2.putText(
@@ -105,6 +109,7 @@ class VideoOverlay:
 
     @staticmethod
     def draw_marker(frame, pts):
+        frame = frame.copy()
         cv2.polylines(frame, [pts], True, (0, 0, 255), 2)  # red outline
         cx, cy = np.mean(pts, axis=0).astype(int)
         cv2.putText(
@@ -117,6 +122,26 @@ class VideoOverlay:
             2
         )
         return frame
+    
+    @staticmethod
+    def draw_board_boarder(frame, ordered):
+        frame = frame.copy()
+
+        if ordered is not None:
+            pts = ordered.astype(int)
+            # draw border
+            cv2.polylines(frame, [pts], isClosed=True, color=(0, 255, 0), thickness=2)
+
+            colors = [(255,0,0),(0,255,0),(0,0,255),(255,255,0)]
+            labels = ["TL","TR","BR","BL"]
+
+            for (x,y), c, l in zip(ordered, colors, labels):
+                cv2.circle(frame, (int(x),int(y)), 10, c, -1)
+                cv2.putText(frame, l, (int(x)+10,int(y)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.9, c, 2)
+                    
+
+            return frame
 
 def main():
     videos = input_videos()
@@ -130,6 +155,7 @@ def main():
         video_name = Path(video).name
         cap = cv2.VideoCapture(video)
         die_handler = Die_handler() 
+        board_detector = BoardDetector()
 
         # Video properties
         fps = cap.get(cv2.CAP_PROP_FPS)
@@ -145,11 +171,18 @@ def main():
 
         for frame_i in tqdm(range(total_frames), desc="Processing video"):
             ret, frame = cap.read()
+            output_frame = frame.copy()
             if not ret:
                 break
 
             pawn_centers_green = PawnDetector.find_green_pawns(frame)
             pawn_centers_blue = PawnDetector.find_blue_pawns(frame)
+
+            board_detector.update(frame)       
+            board_countur = board_detector.countur
+            board_corners = board_detector.board_corners
+
+
 
 
             draw_map = {
@@ -157,7 +190,6 @@ def main():
                 'marker': lambda f, p: VideoOverlay.draw_marker(f, p),
                 'reflection': lambda f, p: VideoOverlay.draw_reflection(f, p),
             }
-
             pts_arr, labels = PlayerTurnDieDetector.find_objects(frame)
             for i in range(len(labels)):
                 label, pts = labels[i], pts_arr[i]
@@ -165,13 +197,15 @@ def main():
                     die_handler.update(frame, pts)
                 func = draw_map.get(label)
                 if func:
-                    func(frame, pts)
+                    output_frame = func(output_frame, pts)
 
 
 
             # Draw detected pawns
-            output_frame = VideoOverlay.draw_green_pawn_circles(frame, pawn_centers_green)
+            output_frame = VideoOverlay.draw_green_pawn_circles(output_frame, pawn_centers_green)
             output_frame = VideoOverlay.draw_blue_pawn_circles(output_frame, pawn_centers_blue)
+
+            output_frame = VideoOverlay.draw_board_boarder(output_frame, ordered=board_corners)
 
 
             output_writer.write(output_frame)
