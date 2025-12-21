@@ -24,34 +24,35 @@ os.makedirs(os.path.join(main_folder, "engine", "board_data"), exist_ok=True)
 SAVE_PATH = next_free_filename(os.path.join(main_folder, "engine", "board_data", "board_tiles.npy"))
 
 WINDOW_NAME = "Board annotator"
+BOARD_SIZE = 800  # coordinate system 0..800
 # ------------------------
 
+# Load image
 img_bgr = cv2.imread(IMAGE_PATH)
 if img_bgr is None:
     raise FileNotFoundError(IMAGE_PATH)
 
 h, w = img_bgr.shape[:2]
-cx_img, cy_img = w // 2, h // 2
 
-# state
+# Scaling factors from image pixels → board coordinates
+scale_x = BOARD_SIZE / w
+scale_y = BOARD_SIZE / h
+
+# State
 current_id = 0
-points_dict = {}  # id -> list of [x, y] (center-relative)
-
+points_dict = {}  # id -> list of [x, y] in board coordinates
 display = img_bgr.copy()
 
-
+# ---------------- GUI & DRAW ----------------
 def draw_overlay():
     global display
     display = img_bgr.copy()
 
-    # draw center
-    cv2.circle(display, (cx_img, cy_img), 4, (0, 0, 255), -1)
-
-    # draw all points
+    # Draw all points
     for tile_id, pts in points_dict.items():
         for x, y in pts:
-            px = int(x + cx_img)
-            py = int(y + cy_img)
+            px = int(x / scale_x)
+            py = int(y / scale_y)
             cv2.circle(display, (px, py), 4, (0, 255, 0), -1)
             cv2.putText(
                 display,
@@ -63,7 +64,7 @@ def draw_overlay():
                 1
             )
 
-    # draw current id info
+    # Draw current id info
     cv2.putText(
         display,
         f"Current tile ID: {current_id}",
@@ -74,20 +75,19 @@ def draw_overlay():
         2
     )
 
-
 def on_mouse(event, x, y, flags, param):
     global points_dict
 
     if event == cv2.EVENT_LBUTTONDOWN:
-        # convert to center-relative coordinates
-        xr = x - cx_img
-        yr = y - cy_img
+        # convert to board coordinates (0,0 top-left, 800,800 bottom-right)
+        xb = int(x * scale_x)
+        yb = int(y * scale_y)
 
-        points_dict.setdefault(current_id, []).append([xr, yr])
-        print(f"Tile {current_id}: added point ({xr}, {yr})")
+        points_dict.setdefault(current_id, []).append([xb, yb])
+        print(f"Tile {current_id}: added point ({xb}, {yb})")
         draw_overlay()
 
-
+# ---------------- WINDOW ----------------
 cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
 cv2.resizeWindow(WINDOW_NAME, 1000, 1000)
 cv2.setMouseCallback(WINDOW_NAME, on_mouse)

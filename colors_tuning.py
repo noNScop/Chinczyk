@@ -62,8 +62,8 @@ def nothing(x):
 cv2.namedWindow("mask", cv2.WINDOW_NORMAL)
 cv2.resizeWindow("mask", 800, 450)
 
-cv2.createTrackbar("H min", "mask", 0, 255, nothing)
-cv2.createTrackbar("H max", "mask", 179, 255, nothing) # dziwne że tu da się większą wartość niż 179 dać
+cv2.createTrackbar("H min", "mask", 0, 179, nothing)
+cv2.createTrackbar("H max", "mask", 179, 179, nothing) 
 cv2.createTrackbar("S min", "mask", 0, 255, nothing)
 cv2.createTrackbar("S max", "mask", 255, 255, nothing)
 cv2.createTrackbar("V min", "mask", 0, 255, nothing)
