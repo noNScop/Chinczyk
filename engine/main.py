@@ -10,7 +10,7 @@ from detectors.pawn_detector import PawnDetector
 from detectors.playerTurn_die_detector import PlayerTurnDieDetector
 from detectors.die_handler import Die_handler
 from detectors.board_detector import BoardDetector
-
+from detectors.internal_board_detector import InternalBoardDetector
 
 class GameState:
     # Each object will likely need some internal memory to account for situation when it disappears from the view,
@@ -139,11 +139,29 @@ class VideoOverlay:
                 cv2.circle(frame, (int(x),int(y)), 10, c, -1)
                 cv2.putText(frame, l, (int(x)+10,int(y)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.9, c, 2)
-                    
-
             return frame
+        
+    @staticmethod
+    def draw_tile_hulls(frame, internal_board, draw_alpha=0.5):
+        frame = frame.copy()
+
+        if internal_board.last_unwarped_overlay is not None:
+            # Resize overlay to match frame size
+            overlay_resized = cv2.resize(
+                internal_board.last_unwarped_overlay,
+                (frame.shape[1], frame.shape[0]),
+                interpolation=cv2.INTER_LINEAR
+            )
+            mask = np.any(overlay_resized != 0, axis=-1)
+            frame[mask] = (
+                draw_alpha * overlay_resized[mask] +
+                (1 - draw_alpha) * frame[mask]
+            ).astype(np.uint8)
+
+        return frame
 
 def main():
+    SKIP_FRAMES = 10 # only in 1/SKIP_FRAMES the most heavy computationaly thisgs will be performed
     videos = input_videos()
     main_folder = find_main_folder()
 
@@ -156,6 +174,7 @@ def main():
         cap = cv2.VideoCapture(video)
         die_handler = Die_handler() 
         board_detector = BoardDetector()
+        internal_board = InternalBoardDetector()
 
         # Video properties
         fps = cap.get(cv2.CAP_PROP_FPS)
@@ -178,8 +197,13 @@ def main():
             pawn_centers_green = PawnDetector.find_green_pawns(frame)
             pawn_centers_blue = PawnDetector.find_blue_pawns(frame)
 
-            board_detector.update(frame)       
-            board_countur = board_detector.countur
+            board_detector.update(frame)
+            if board_detector.ready:
+                M = board_detector.get_M()
+                M_inv = board_detector.get_M_inv()
+                if frame_i % SKIP_FRAMES == 1:
+                    internal_board.update_occupied_dicts(M, pawn_centers_green, pawn_centers_blue)
+                    internal_board.update_unwarped_overlay(frame, M_inv)
             board_corners = board_detector.board_corners
 
 
@@ -207,7 +231,12 @@ def main():
 
             output_frame = VideoOverlay.draw_board_boarder(output_frame, ordered=board_corners)
 
-
+            output_frame = VideoOverlay.draw_tile_hulls(
+                frame=output_frame,
+                internal_board=internal_board,
+                draw_alpha=0.5
+            )
+            
             output_writer.write(output_frame)
 
         cap.release()

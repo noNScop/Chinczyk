@@ -19,7 +19,7 @@ class BoardDetector:
         contour = self.find_board_contour(frame)
         if contour is None:
             return
-        board_corners = self.get_corners_ordered(contour)
+        board_corners = self.get_corners_ordered(contour) # f boarder not fully visible i dont update its parameters
         if board_corners is None:
             return
         self.board_corners = board_corners
@@ -99,4 +99,15 @@ class BoardDetector:
         pts = np.array(points, dtype=np.float32).reshape(-1, 1, 2)
         orig_pts = cv2.perspectiveTransform(pts, self.M_inv).reshape(-1, 2)
         return orig_pts
+    
+    
+    @property
+    def ready(self):
+        return self.M is not None
+
+    def get_M(self):
+        return self.M
+
+    def get_M_inv(self):
+        return self.M_inv
 
