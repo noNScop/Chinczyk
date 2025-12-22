@@ -191,8 +191,9 @@ def main():
             for pts in reflection_all:
                 output_frame = VideoOverlay.draw_reflection(output_frame, pts)
 
-            output_frame = VideoOverlay.draw_board_boarder(output_frame, ordered=board_corners)
-            output_frame = VideoOverlay.draw_tile_hulls(frame=output_frame, internal_board=internal_board, draw_alpha=0.5)
+            if board_detector.ready:
+                output_frame = VideoOverlay.draw_board_boarder(output_frame, ordered=board_corners)
+                output_frame = VideoOverlay.draw_tile_hulls(frame=output_frame, internal_board=internal_board, draw_alpha=0.5)
 
 
 
