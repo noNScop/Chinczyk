@@ -17,6 +17,9 @@ from state_controllers.pawn_state_controller import PawnStateController
 
 from overlays.corner_overlay import CornerOverlay
 from overlays.video_overlay import VideoOverlay
+from overlays.event_overlay import EventOverlay
+
+from event_recognizers.die_throw_recognizer import DieThrowRecognizer
 
 # aim flow:
 # [Detectors]  →  [StateControllers]  →  [GameState]  →  [Overlay / Logic]
@@ -92,6 +95,8 @@ def main():
         internal_board = InternalBoardDetector(tiles, tiles_blue, tiles_green, board_relaxed_bgr)
         turn_state = TurnStateController(marker_tiles)
         pawn_state = PawnStateController(tiles, tiles_blue, tiles_green)
+        die_throw_recognizer = DieThrowRecognizer()
+        event_overlay = EventOverlay()
 
 
         # Video properties
@@ -131,21 +136,29 @@ def main():
             board_corners = board_detector.board_corners
             
 
+            dice_all = [] # probably should fix so only 1 die can be detected
+            marker_all = []
+            reflection_all = []
+            if_die_detected_this_frame = False
+
             pts_arr, labels = PlayerTurnDieDetector.find_objects(frame)
             for i in range(len(labels)):
                 label, pts = labels[i], pts_arr[i]
 
                 if label == 'die':
                     die_handler.update(frame, pts)
-                    output_frame = VideoOverlay.draw_die(output_frame, pts, die_handler)
+                    dice_all.append(pts)
+                    if_die_detected_this_frame = True # chyba trochę za dużo logiki tu się dzieje, coś z tym zrobić?
                 
                 if label == 'marker':
                     turn_state.add_marker(pts)
-                    output_frame = VideoOverlay.draw_marker(output_frame, pts)
+                    marker_all.append(pts)
                 
                 if label == 'reflection':
-                    output_frame = VideoOverlay.draw_reflection(output_frame, pts)
+                    reflection_all.append(pts)
             
+            die_throw_recognizer.update(die_handler.get_number(), if_die_detected_this_frame, frame_i)
+
             if board_detector.ready:
                 M = board_detector.get_M()
                 turn_state.decide_on_turn(M)
@@ -165,12 +178,37 @@ def main():
             output_frame = VideoOverlay.draw_green_pawn_circles(output_frame, pawn_centers_green_stable)
             output_frame = VideoOverlay.draw_blue_pawn_circles(output_frame, pawn_centers_blue_stable)
 
-            output_frame = VideoOverlay.draw_board_boarder(output_frame, ordered=board_corners)
+            for pts in dice_all:
+                output_frame = VideoOverlay.draw_die(output_frame, pts, die_handler)
+            for pts in marker_all:
+                output_frame = VideoOverlay.draw_marker(output_frame, pts)
+            for pts in reflection_all:
+                output_frame = VideoOverlay.draw_reflection(output_frame, pts)
 
+            output_frame = VideoOverlay.draw_board_boarder(output_frame, ordered=board_corners)
             output_frame = VideoOverlay.draw_tile_hulls(frame=output_frame, internal_board=internal_board, draw_alpha=0.5)
+
+
 
             output_frame = CornerOverlay.draw_turn_info(output_frame, turn_state,)
             output_frame = CornerOverlay.draw_pawn_info(output_frame, pawn_state,)
+
+            #events
+            print("event ", die_throw_recognizer.which_event(), die_throw_recognizer.frame_num - die_throw_recognizer.last_event_frame)
+            if die_throw_recognizer.if_event:
+                event_overlay.add_event(
+                "throwed die:" + str(die_throw_recognizer.which_event()) ,
+                effect_func=EventOverlay.bounce_text,
+                duration=50,
+                )
+
+                        
+                        
+            output_frame = event_overlay.draw(output_frame) 
+
+
+
+
 
             
             output_writer.write(output_frame)

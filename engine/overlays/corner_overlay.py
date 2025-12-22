@@ -40,7 +40,7 @@ class CornerOverlay:
         frame = frame.copy()
 
         lines = [
-            f"Green  | home: {pawn_state.green_home}  base: {pawn_state.green_base} board: {pawn_state.blue_board}",
+            f"Green  | home: {pawn_state.green_home}  base: {pawn_state.green_base} board: {pawn_state.green_board}",
             f"Blue   | home: {pawn_state.blue_home}   base: {pawn_state.blue_base} board: {pawn_state.blue_board}",
         ]
 

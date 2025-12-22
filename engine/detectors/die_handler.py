@@ -42,13 +42,13 @@ class Die_handler():
         else:
             return 0, None
     
-    @staticmethod
-    def num_on_die_with_memory(num_pips): 
-        return num_pips # placeholder
+    # @staticmethod
+    # def num_on_die_with_memory(num_pips): 
+    #     return num_pips # placeholder
     
-    @staticmethod
-    def circles_on_die_with_memory(circles):
-        return np.round(circles[0]).astype(int)
+    # @staticmethod
+    # def circles_on_die_with_memory(circles):
+    #     return np.round(circles[0]).astype(int)
 
     
     def update(self, frame_bgr, pts):
@@ -56,8 +56,8 @@ class Die_handler():
         num_pips, circles = self.count_num_on_die(frame_hsv, pts)
         #uwzględnione też zerowe wyniki np kiedy kość się toczy
         if num_pips > 0:
-            self.number = self.num_on_die_with_memory(num_pips)
-            self.circles = self.circles_on_die_with_memory(circles)
+            self.number = num_pips #self.num_on_die_with_memory(num_pips)
+            self.circles = np.round(circles[0]).astype(int) #self.circles_on_die_with_memory(circles)
 
         
     def get_number(self):

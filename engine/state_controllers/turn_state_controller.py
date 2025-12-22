@@ -28,7 +28,7 @@ class TurnStateController():
         return warped_pts
 
     def decide_on_turn(self, M):
-        print("turn", self.turn)
+        #print("turn", self.turn)
         if(len(self.markers_all)) == 0:
             return
         
@@ -70,7 +70,7 @@ class TurnStateController():
                 dist = self.calculate_dist(warped_marker_detected, marker_real)
                 sim = 1/dist
                 similarities[i][key] = sim
-        print("similarities", similarities)
+        #print("similarities", similarities)
         return np.array(similarities)
     
     
