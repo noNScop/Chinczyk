@@ -3,7 +3,6 @@ import cv2
 import numpy as np
 from pathlib import Path
 from tqdm.auto import tqdm
-
 from helpers import input_videos, find_main_folder
 
 from detectors.pawn_detector import PawnDetector
@@ -15,11 +14,12 @@ from detectors.internal_board_detector import InternalBoardDetector
 from state_controllers.turn_state_controller import TurnStateController
 from state_controllers.pawn_state_controller import PawnStateController
 
+from event_recognizers.win_game_recognizer import WinGameRecognizer
+from event_recognizers.die_throw_recognizer import DieThrowRecognizer
+
 from overlays.corner_overlay import CornerOverlay
 from overlays.video_overlay import VideoOverlay
 from overlays.event_overlay import EventOverlay
-
-from event_recognizers.die_throw_recognizer import DieThrowRecognizer
 
 # aim flow:
 # [Detectors]  →  [StateControllers]  →  [GameState]  →  [Overlay / Logic]
@@ -90,13 +90,19 @@ def main():
     for video in videos:
         video_name = Path(video).name
         cap = cv2.VideoCapture(video)
+
         die_handler = Die_handler() 
         board_detector = BoardDetector()
         internal_board = InternalBoardDetector(tiles, tiles_blue, tiles_green, board_relaxed_bgr)
+
         turn_state = TurnStateController(marker_tiles)
         pawn_state = PawnStateController(tiles, tiles_blue, tiles_green)
+
         die_throw_recognizer = DieThrowRecognizer()
+        win_recognizer = WinGameRecognizer(pawn_state)
+
         event_overlay = EventOverlay()
+
 
 
         # Video properties
@@ -199,8 +205,14 @@ def main():
                 event_overlay.add_event(
                 "throwed die:" + str(die_throw_recognizer.which_event()) ,
                 effect_func=EventOverlay.bounce_text,
-                duration=50,
-                )
+                duration=50,)
+
+            if win_recognizer.update():
+                winner = win_recognizer.get_winner()
+                event_overlay.add_event(
+                    f"{winner.upper()} WINS!",
+                    effect_func=EventOverlay.slide_up, 
+                    duration=100 )
 
                         
                         
