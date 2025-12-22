@@ -4,26 +4,22 @@ import os
 from helpers import find_main_folder
 
 class InternalBoardDetector():
-    MAIN_FOLDER = find_main_folder()
-    TILES = np.load(os.path.join(MAIN_FOLDER,"engine/board_data/regularTiles_gameModel.npy"), allow_pickle=True).item()
-    TILES_GREEN = np.load(os.path.join(MAIN_FOLDER,"engine/board_data/greenHomeTiles_gameModel.npy"), allow_pickle=True).item()
-    TILES_BLUE = np.load(os.path.join(MAIN_FOLDER,"engine/board_data/blueHomeTiles_gameModel.npy"), allow_pickle=True).item()
-    ALL_TILES = {}
-    ALL_TILES.update(TILES)        
-    ALL_TILES.update(TILES_GREEN)  
-    ALL_TILES.update(TILES_BLUE)  
-
-    MAIN_FOLDER = find_main_folder()
-    BOARD_BGR = cv2.imread(os.path.join(MAIN_FOLDER, "data", "board.jpg"))
-    BOARD_RELAXED_BGR = cv2.imread(os.path.join(MAIN_FOLDER, "data", "board_relaxed.jpg"))
-
-
-    def __init__(self, canonical_size = 800):
+    def __init__(self, tiles, tiles_blue, tiles_green, board_relaxed_bgr, canonical_size = 800):
+        self.tiles = tiles
+        self.tiles_blue = tiles_blue
+        self.tiles_green = tiles_green
+        self.board_relaxed_bgr = board_relaxed_bgr
         self.canonical_size = canonical_size
+
+        all_tiles = {}
+        all_tiles.update(tiles)        
+        all_tiles.update(tiles_blue)  
+        all_tiles.update(tiles_green)  
+        self.all_tiles = all_tiles
 
         self.regions= self.initiate_regions()
         self.regions_dict = None
-        self.tile_regions_dict = self.regions_with_tile_points(self.regions, self.ALL_TILES) 
+        self.tile_regions_dict = self.regions_with_tile_points(self.regions, self.all_tiles) 
         # tile_regions_dict is dict tile_id: region_id (which regions belong to which tiles)
         self.occupied_tiles = {}
         self.last_unwarped_overlay = None
@@ -42,7 +38,7 @@ class InternalBoardDetector():
             num_regions: total number of regions (next unused label)
         """
 
-        board_relaxed_bgr_canonical = cv2.resize(self.BOARD_RELAXED_BGR, (self.canonical_size, self.canonical_size))
+        board_relaxed_bgr_canonical = cv2.resize(self.board_relaxed_bgr, (self.canonical_size, self.canonical_size))
         board_relaxed_rgb = cv2.cvtColor(board_relaxed_bgr_canonical, cv2.COLOR_BGR2RGB)
 
         ludo_gray = cv2.cvtColor(board_relaxed_rgb, cv2.COLOR_RGB2GRAY)
@@ -127,7 +123,7 @@ class InternalBoardDetector():
                 px, py = int(px), int(py)
                 closest_tile = None
                 closest_dist = float("inf")
-                for tile_id, points in self.ALL_TILES.items():
+                for tile_id, points in self.all_tiles.items():
                     for tx, ty in points:
                         d = np.linalg.norm(np.array([px, py]) - np.array([tx, ty]))
                         if d < closest_dist:

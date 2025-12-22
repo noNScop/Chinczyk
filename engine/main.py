@@ -11,31 +11,51 @@ from detectors.playerTurn_die_detector import PlayerTurnDieDetector
 from detectors.die_handler import Die_handler
 from detectors.board_detector import BoardDetector
 from detectors.internal_board_detector import InternalBoardDetector
-from detectors.turn_detector import TurnDetector
+
+from state_controllers.turn_state_controller import TurnStateController
+from state_controllers.pawn_state_controller import PawnStateController
+
 from overlays.corner_overlay import CornerOverlay
 from overlays.video_overlay import VideoOverlay
 
+# aim flow:
+# [Detectors]  →  [StateControllers]  →  [GameState]  →  [Overlay / Logic]
 
 class GameState:
     # Each object will likely need some internal memory to account for situation when it disappears from the view,
     # so instead of python primitives like strings we will need a class for each object
-    def __init__(self):
+
+    def __init__(self, internal_board: InternalBoardDetector):
         self.turn = None # green / blue
 
         # Each can be -  # of tile / # home tile / base
-        self.green_pawns = [None, None, None, None]
-        self.blue_pawns = [None, None, None, None]
+        #self.green_pawns = [None, None, None, None] 
+        #self.blue_pawns = [None, None, None, None]
+        # as we dont differentiate pawns of player i am not sure if the above would work
+        self.blue_home = None # num of blue pawns in home
+        self.green_home = None
+        self.blue_base = None
+        self.green_base = None
+
 
         self.die = None # most recent number on the die
 
         self.throws = None # Number of throws remaining for the current player 0-3
 
-    def update_from_frame(self, frame):
-        # For now it is a frame, but we may need to analyze multiple frames
-        pass
+        self.internal_board_detector
+
+    def update(self, turn, die_score, ):
+        # maybe allow other classes accumulate info from may frames and decide on true state, here we will jusst gather info
+        self.turn = self.update_turn(turn)
+        self.die = self.update_die(die_score)
 
 
 
+    def update_turn(self, turn):
+        self.turn = turn
+
+    def update_die(self, die_score):
+        self.die = die_score
 
 
 class EventDetector:
@@ -51,6 +71,14 @@ def main():
     SKIP_FRAMES = 10 # only in 1/SKIP_FRAMES the most heavy computationaly thisgs will be performed
     videos = input_videos()
     main_folder = find_main_folder()
+    tiles = np.load(os.path.join(main_folder,"engine/board_data/regularTiles_gameModel.npy"), allow_pickle=True).item()
+    tiles_green = np.load(os.path.join(main_folder,"engine/board_data/greenHomeTiles_gameModel.npy"), allow_pickle=True).item()
+    tiles_blue = np.load(os.path.join(main_folder,"engine/board_data/blueHomeTiles_gameModel.npy"), allow_pickle=True).item()
+    marker_tiles = np.load(os.path.join(main_folder,"engine/board_data/markerTiles_gameModel.npy"), allow_pickle=True).item() 
+    board_bgr = cv2.imread(os.path.join(main_folder, "data", "board.jpg"))
+    board_relaxed_bgr = cv2.imread(os.path.join(main_folder, "data", "board_relaxed.jpg"))
+
+
 
     print("Videos to be processed:", *videos, sep="\n")
 
@@ -61,8 +89,9 @@ def main():
         cap = cv2.VideoCapture(video)
         die_handler = Die_handler() 
         board_detector = BoardDetector()
-        internal_board = InternalBoardDetector()
-        turn_detector = TurnDetector()
+        internal_board = InternalBoardDetector(tiles, tiles_blue, tiles_green, board_relaxed_bgr)
+        turn_state = TurnStateController(marker_tiles)
+        pawn_state = PawnStateController(tiles, tiles_blue, tiles_green)
 
 
         # Video properties
@@ -86,12 +115,18 @@ def main():
             pawn_centers_green = PawnDetector.find_green_pawns(frame)
             pawn_centers_blue = PawnDetector.find_blue_pawns(frame)
 
+            pawn_centers_green_stable = pawn_centers_green #placeholder, maybe there should be class to make positions consistent
+            pawn_centers_blue_stable = pawn_centers_blue
+
+
+
+
             board_detector.update(frame)
             if board_detector.ready:
                 M = board_detector.get_M()
                 M_inv = board_detector.get_M_inv()
                 if frame_i % SKIP_FRAMES == 1:
-                    internal_board.update_occupied_dicts(M, pawn_centers_green, pawn_centers_blue)
+                    internal_board.update_occupied_dicts(M, pawn_centers_green_stable, pawn_centers_blue_stable)
                     internal_board.update_unwarped_overlay(frame, M_inv)
             board_corners = board_detector.board_corners
             
@@ -105,7 +140,7 @@ def main():
                     output_frame = VideoOverlay.draw_die(output_frame, pts, die_handler)
                 
                 if label == 'marker':
-                    turn_detector.add_marker(pts)
+                    turn_state.add_marker(pts)
                     output_frame = VideoOverlay.draw_marker(output_frame, pts)
                 
                 if label == 'reflection':
@@ -113,7 +148,13 @@ def main():
             
             if board_detector.ready:
                 M = board_detector.get_M()
-                turn_detector.decide_on_turn(M)
+                turn_state.decide_on_turn(M)
+
+
+            if board_detector.ready:
+                corners = board_detector.board_corners
+                stable_corners = corners
+                pawn_state.update(pawn_centers_green_stable, pawn_centers_blue_stable, internal_board.occupied_tiles, stable_corners)
 
                 
                 
@@ -121,18 +162,16 @@ def main():
 
 
             # Draw detected pawns
-            output_frame = VideoOverlay.draw_green_pawn_circles(output_frame, pawn_centers_green)
-            output_frame = VideoOverlay.draw_blue_pawn_circles(output_frame, pawn_centers_blue)
+            output_frame = VideoOverlay.draw_green_pawn_circles(output_frame, pawn_centers_green_stable)
+            output_frame = VideoOverlay.draw_blue_pawn_circles(output_frame, pawn_centers_blue_stable)
 
             output_frame = VideoOverlay.draw_board_boarder(output_frame, ordered=board_corners)
 
-            output_frame = VideoOverlay.draw_tile_hulls(
-                frame=output_frame,
-                internal_board=internal_board,
-                draw_alpha=0.5
-            )
+            output_frame = VideoOverlay.draw_tile_hulls(frame=output_frame, internal_board=internal_board, draw_alpha=0.5)
 
-            output_frame = CornerOverlay.draw_turn_info(output_frame, turn_detector,)
+            output_frame = CornerOverlay.draw_turn_info(output_frame, turn_state,)
+            output_frame = CornerOverlay.draw_pawn_info(output_frame, pawn_state,)
+
             
             output_writer.write(output_frame)
 
