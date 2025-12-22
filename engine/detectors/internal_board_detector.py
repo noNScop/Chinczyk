@@ -30,7 +30,6 @@ class InternalBoardDetector():
 
 
     def update_occupied_dicts(self, M, green_pawns_orig, blue_pawns_orig):
-        print(self.occupied_tiles)
         self.occupied_tiles = self.detect_occupied_tiles_separate(green_pawns_orig, blue_pawns_orig, M)
         # occupied example {47: 'green', 16: 'green', 19: 'green', 38: 'blue', 42: 'blue'}
 
@@ -202,4 +201,3 @@ class InternalBoardDetector():
             (frame.shape[1], frame.shape[0])
         )
 
-        print("updated",type(self.last_unwarped_overlay))

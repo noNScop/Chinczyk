@@ -32,7 +32,6 @@ class BoardDetector:
             [0, self.canonical_size]
         ], dtype=np.float32)
 
-        print("corners######", self.board_corners)
         self.M = cv2.getPerspectiveTransform(self.board_corners, dst)
         self.M_inv = np.linalg.inv(self.M)
 
@@ -100,7 +99,7 @@ class BoardDetector:
         orig_pts = cv2.perspectiveTransform(pts, self.M_inv).reshape(-1, 2)
         return orig_pts
     
-    
+
     @property
     def ready(self):
         return self.M is not None

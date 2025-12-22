@@ -11,6 +11,10 @@ from detectors.playerTurn_die_detector import PlayerTurnDieDetector
 from detectors.die_handler import Die_handler
 from detectors.board_detector import BoardDetector
 from detectors.internal_board_detector import InternalBoardDetector
+from detectors.turn_detector import TurnDetector
+from overlays.corner_overlay import CornerOverlay
+from overlays.video_overlay import VideoOverlay
+
 
 class GameState:
     # Each object will likely need some internal memory to account for situation when it disappears from the view,
@@ -30,6 +34,10 @@ class GameState:
         # For now it is a frame, but we may need to analyze multiple frames
         pass
 
+
+
+
+
 class EventDetector:
     # Likely each event will require separatew detector like object detectors
     # Track events like pawn anihilation, or exiting the base
@@ -37,128 +45,7 @@ class EventDetector:
     def __init__(self):
         pass
 
-class VideoOverlay:
-    # a class with all that is needed to create a visual overlay on the video with the game state and event notifiers (if get's too large m,aybe better to create separate functions in some file / files)
-    @staticmethod
-    def draw_green_pawn_circles(frame, pawn_centers):
-        frame = frame.copy()
-        for cx, cy in pawn_centers:
-            cv2.circle(frame, (int(cx), int(cy)), 15, (255, 255, 51), 2)
 
-        return frame
-
-    @staticmethod
-    def draw_blue_pawn_circles(frame, pawn_centers):
-        frame = frame.copy()
-        for cx, cy in pawn_centers:
-            cv2.circle(frame, (int(cx), int(cy)), 15, (0, 0, 255), 2)
-
-        return frame
-    
-    @staticmethod
-    def draw_die(frame, pts, die_handler : Die_handler):
-        frame = frame.copy()
-
-        cv2.polylines(frame, [pts], True, (0, 255, 0), 2)
-        num = die_handler.get_number()
-
-        cx, cy = np.mean(pts, axis=0).astype(int)
-        cv2.putText(
-            frame,
-            f"{int(num)}",
-            (cx - 80, cy),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (0, 0, 0),
-            2
-        )
-
-        circles = die_handler.get_circes()
-        if circles is not None:
-            for x, y, r in circles:
-                x, y, r = int(x), int(y), int(r)
-                cv2.circle(frame, (x, y), r, (0, 0, 255), 2)   # circle
-                cv2.circle(frame, (x, y), 2, (255, 0, 0), -1) # center
-                cv2.putText(
-                    frame,
-                    f"r={r}",
-                    (x + 5, y - 5),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.4,
-                    (0, 0, 0),
-                    1
-                )
-        return frame
-    
-    @staticmethod
-    def draw_reflection(frame, pts):
-        frame = frame.copy()
-
-        cv2.polylines(frame, [pts], True, (255, 255, 0), 2)  # cyan outline
-        cx, cy = np.mean(pts, axis=0).astype(int)
-        cv2.putText(
-            frame,
-            "reflection",
-            (cx - 30, cy),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            (0, 0, 0),
-            2
-        )
-        return frame
-
-    @staticmethod
-    def draw_marker(frame, pts):
-        frame = frame.copy()
-        cv2.polylines(frame, [pts], True, (0, 0, 255), 2)  # red outline
-        cx, cy = np.mean(pts, axis=0).astype(int)
-        cv2.putText(
-            frame,
-            "marker",
-            (cx - 20, cy),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            (0, 0, 0),
-            2
-        )
-        return frame
-    
-    @staticmethod
-    def draw_board_boarder(frame, ordered):
-        frame = frame.copy()
-
-        if ordered is not None:
-            pts = ordered.astype(int)
-            # draw border
-            cv2.polylines(frame, [pts], isClosed=True, color=(0, 255, 0), thickness=2)
-
-            colors = [(255,0,0),(0,255,0),(0,0,255),(255,255,0)]
-            labels = ["TL","TR","BR","BL"]
-
-            for (x,y), c, l in zip(ordered, colors, labels):
-                cv2.circle(frame, (int(x),int(y)), 10, c, -1)
-                cv2.putText(frame, l, (int(x)+10,int(y)),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.9, c, 2)
-            return frame
-        
-    @staticmethod
-    def draw_tile_hulls(frame, internal_board, draw_alpha=0.5):
-        frame = frame.copy()
-
-        if internal_board.last_unwarped_overlay is not None:
-            # Resize overlay to match frame size
-            overlay_resized = cv2.resize(
-                internal_board.last_unwarped_overlay,
-                (frame.shape[1], frame.shape[0]),
-                interpolation=cv2.INTER_LINEAR
-            )
-            mask = np.any(overlay_resized != 0, axis=-1)
-            frame[mask] = (
-                draw_alpha * overlay_resized[mask] +
-                (1 - draw_alpha) * frame[mask]
-            ).astype(np.uint8)
-
-        return frame
 
 def main():
     SKIP_FRAMES = 10 # only in 1/SKIP_FRAMES the most heavy computationaly thisgs will be performed
@@ -175,6 +62,8 @@ def main():
         die_handler = Die_handler() 
         board_detector = BoardDetector()
         internal_board = InternalBoardDetector()
+        turn_detector = TurnDetector()
+
 
         # Video properties
         fps = cap.get(cv2.CAP_PROP_FPS)
@@ -205,23 +94,29 @@ def main():
                     internal_board.update_occupied_dicts(M, pawn_centers_green, pawn_centers_blue)
                     internal_board.update_unwarped_overlay(frame, M_inv)
             board_corners = board_detector.board_corners
+            
 
-
-
-
-            draw_map = {
-                'die': lambda f, p: VideoOverlay.draw_die(f, p, die_handler),
-                'marker': lambda f, p: VideoOverlay.draw_marker(f, p),
-                'reflection': lambda f, p: VideoOverlay.draw_reflection(f, p),
-            }
             pts_arr, labels = PlayerTurnDieDetector.find_objects(frame)
             for i in range(len(labels)):
                 label, pts = labels[i], pts_arr[i]
+
                 if label == 'die':
                     die_handler.update(frame, pts)
-                func = draw_map.get(label)
-                if func:
-                    output_frame = func(output_frame, pts)
+                    output_frame = VideoOverlay.draw_die(output_frame, pts, die_handler)
+                
+                if label == 'marker':
+                    turn_detector.add_marker(pts)
+                    output_frame = VideoOverlay.draw_marker(output_frame, pts)
+                
+                if label == 'reflection':
+                    output_frame = VideoOverlay.draw_reflection(output_frame, pts)
+            
+            if board_detector.ready:
+                M = board_detector.get_M()
+                turn_detector.decide_on_turn(M)
+
+                
+                
 
 
 
@@ -236,6 +131,8 @@ def main():
                 internal_board=internal_board,
                 draw_alpha=0.5
             )
+
+            output_frame = CornerOverlay.draw_turn_info(output_frame, turn_detector,)
             
             output_writer.write(output_frame)
 
