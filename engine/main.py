@@ -3,6 +3,8 @@ import cv2
 import numpy as np
 from pathlib import Path
 from tqdm.auto import tqdm
+from functools import partial
+
 from helpers import input_videos, find_main_folder
 
 from detectors.pawn_detector import PawnDetector
@@ -16,6 +18,8 @@ from state_controllers.pawn_state_controller import PawnStateController
 
 from event_recognizers.win_game_recognizer import WinGameRecognizer
 from event_recognizers.die_throw_recognizer import DieThrowRecognizer
+from event_recognizers.enter_home_recognizer import EnterHomeRecognizer
+from event_recognizers.leave_base_recognizer import LeaveBaseRecognizer
 
 from overlays.corner_overlay import CornerOverlay
 from overlays.video_overlay import VideoOverlay
@@ -100,6 +104,8 @@ def main():
 
         die_throw_recognizer = DieThrowRecognizer()
         win_recognizer = WinGameRecognizer(pawn_state)
+        enter_home_recognizer = EnterHomeRecognizer(pawn_state)
+        leave_base_recognizer = LeaveBaseRecognizer(pawn_state)
 
         event_overlay = EventOverlay()
 
@@ -199,9 +205,13 @@ def main():
 
             output_frame = CornerOverlay.draw_turn_info(output_frame, turn_state,)
             output_frame = CornerOverlay.draw_pawn_info(output_frame, pawn_state,)
+            
+            #####################################
+            # Events
+            #####################################
 
-            #events
             print("event ", die_throw_recognizer.which_event(), die_throw_recognizer.frame_num - die_throw_recognizer.last_event_frame)
+
             if die_throw_recognizer.if_event:
                 event_overlay.add_event(
                 "throwed die:" + str(die_throw_recognizer.which_event()) ,
@@ -214,6 +224,18 @@ def main():
                     f"{winner.upper()} WINS!",
                     effect_func=EventOverlay.slide_up, 
                     duration=100 )
+                
+            if enter_home_recognizer.update(TurnStateController.ID_MARKER_MAPPING[turn_state.turn]):
+                event_overlay.add_event(
+                    f"{enter_home_recognizer.last_entered} pawn entered the home!",
+                    effect_func=partial(EventOverlay.fade_center, font_scale=2.5),
+                    duration=100
+                )
+
+            if leave_base_recognizer.update(TurnStateController.ID_MARKER_MAPPING[turn_state.turn], len(pawn_centers_green_stable), len(pawn_centers_blue_stable)):
+                event_overlay.add_event(
+                f"{leave_base_recognizer.player} pawn left the base!",
+                effect_func=EventOverlay.outline_text)
 
                         
                         
