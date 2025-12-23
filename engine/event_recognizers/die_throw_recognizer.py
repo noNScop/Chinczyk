@@ -29,6 +29,8 @@ class DieThrowRecognizer:# new chat version i did not check it but works better 
 
         self.detected_die_pos_last = None
 
+        self.dist_threshold = 50 # TO TUNE
+
     def update(self, die_number, if_die_visible, frame_num, M, all_die_pos, board_poly):# na razie jest prowizorka i może być kilka kości wykrytych all_die_pos is list
         """Call every frame"""
         if len(all_die_pos)>0:
@@ -120,7 +122,7 @@ class DieThrowRecognizer:# new chat version i did not check it but works better 
         dist = self.calculate_dist(warped_die_pos, prev_warped_die_pos)
         print(dist, "dist")
 
-        if dist < 100:
+        if dist < self.dist_threshold:
             return True
         else:
             return False
