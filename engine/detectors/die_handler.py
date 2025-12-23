@@ -2,9 +2,8 @@ import cv2
 import numpy as np
 
 class Die_handler():
-    def __init__(self, memory_frames = 30):
+    def __init__(self):
         self.number = 0
-        self.memory_frames = memory_frames 
         self.circles = None
     
     @staticmethod
@@ -58,7 +57,9 @@ class Die_handler():
         if num_pips > 0:
             self.number = num_pips #self.num_on_die_with_memory(num_pips)
             self.circles = np.round(circles[0]).astype(int) #self.circles_on_die_with_memory(circles)
-
+        else:
+            self.number = 0
+            self.circles = []
         
     def get_number(self):
         return self.number

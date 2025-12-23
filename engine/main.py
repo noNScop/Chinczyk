@@ -168,12 +168,12 @@ def main():
                 
                 if label == 'reflection':
                     reflection_all.append(pts)
-            
-            die_throw_recognizer.update(die_handler.get_number(), if_die_detected_this_frame, frame_i)
+            if board_detector.ready:
+                die_throw_recognizer.update(die_handler.get_number(), if_die_detected_this_frame, frame_i, M, dice_all, board_corners)
 
             if board_detector.ready:
-                M = board_detector.get_M()
                 turn_state.decide_on_turn(M)
+
 
 
             if board_detector.ready:

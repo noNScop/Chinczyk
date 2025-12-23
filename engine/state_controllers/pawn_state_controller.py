@@ -5,7 +5,8 @@ from helpers import find_main_folder
 from collections import deque
 
 class PawnStateController():    
-
+    '''now the state controller directly detects what is visible just from one frame
+    we should probably change it so when board/ pawns are not visible it remembers the state'''
     ID_MARKER_MAPPING = {0: "blue", 1:"green"}
 
 
