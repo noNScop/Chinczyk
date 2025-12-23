@@ -6,7 +6,7 @@ from state_controllers.pawn_state_controller import PawnStateController
 class LeaveBaseRecognizer():
     """
     Recognizer for leave-base event
-    Detects the decrease in number of pawns in base directly from detector, but only if all pawns are visible
+    Checks if in the last state update added pawns at their base-exit positions
     """
     def __init__(self, pawn_state: PawnStateController):
         self.pawn_state = pawn_state
@@ -20,24 +20,14 @@ class LeaveBaseRecognizer():
         self.green_base = self.pawn_state.green_base
         self.blue_base = self.pawn_state.blue_base
 
-    def update(self, player, green_pawns_visible, blue_pawns_visible):
-        self.player = player
-
-        is_event = False
-
-        if green_pawns_visible == 4 and blue_pawns_visible == 4:
-            # Initialise on the beginning
-            if self.green_base is None:
-                self.initialise_state()
-
-            if self.pawn_state.green_base + 1 == self.green_base:
-                is_event = True
-
-            if self.pawn_state.blue_base + 1 == self.blue_base:
-                is_event = True
-            
-            # Update in case the number of pawns in base increased
-            self.green_base = self.pawn_state.green_base
-            self.blue_base = self.pawn_state.blue_base
-
-        return is_event
+    def update(self):
+        if self.pawn_state.previous_positions is None:
+            return False
+        
+        if 0 not in self.pawn_state.previous_positions and 0 in self.pawn_state.positions and self.pawn_state.positions[0] == "blue":
+            self.player = "Blue"
+            return True
+        elif 20 not in self.pawn_state.previous_positions and 20 in self.pawn_state.positions and self.pawn_state.positions[20] == "green":
+            self.player = "Green"
+            return True
+        return False

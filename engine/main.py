@@ -100,7 +100,7 @@ def main():
         internal_board = InternalBoardDetector(tiles, tiles_blue, tiles_green, board_relaxed_bgr)
 
         turn_state = TurnStateController(marker_tiles)
-        pawn_state = PawnStateController(tiles, tiles_blue, tiles_green)
+        pawn_state = PawnStateController(tiles, tiles_blue, tiles_green, turn_state)
 
         die_throw_recognizer = DieThrowRecognizer()
         win_recognizer = WinGameRecognizer(pawn_state)
@@ -177,9 +177,7 @@ def main():
 
 
             if board_detector.ready:
-                corners = board_detector.board_corners
-                stable_corners = corners
-                pawn_state.update(pawn_centers_green_stable, pawn_centers_blue_stable, internal_board.occupied_tiles, stable_corners)
+                pawn_state.update(pawn_centers_green_stable, pawn_centers_blue_stable, internal_board.occupied_tiles)
 
                 
                 
@@ -215,7 +213,7 @@ def main():
             if die_throw_recognizer.if_event:
                 event_overlay.add_event(
                 "throwed die:" + str(die_throw_recognizer.which_event()) ,
-                effect_func=EventOverlay.bounce_text,
+                effect_func=EventOverlay.outline_text,
                 duration=50,)
 
             if win_recognizer.update():
@@ -232,20 +230,23 @@ def main():
                     duration=100
                 )
 
-            if leave_base_recognizer.update(TurnStateController.ID_MARKER_MAPPING[turn_state.turn], len(pawn_centers_green_stable), len(pawn_centers_blue_stable)):
+            if leave_base_recognizer.update():
                 event_overlay.add_event(
-                f"{leave_base_recognizer.player} pawn left the base!",
-                effect_func=EventOverlay.outline_text)
+                    f"{leave_base_recognizer.player} pawn left the base!",
+                    effect_func=partial(EventOverlay.fade_center, font_scale=2.5)
+                )
 
-                        
+            # if pawn_capture_recognizer.update():
+            #     event_overlay.add_event(
+            #         f"{pawn_capture_recognizer.prey} pawn has been slayed!",
+            #         effect_func=partial(EventOverlay.bounce_text, font_scale=2.5)
+            #     )
+
+
+
+
                         
             output_frame = event_overlay.draw(output_frame) 
-
-
-
-
-
-            
             output_writer.write(output_frame)
 
         cap.release()
