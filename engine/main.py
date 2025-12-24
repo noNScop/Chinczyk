@@ -142,8 +142,9 @@ def main():
             if board_detector.ready:
                 M = board_detector.get_M()
                 M_inv = board_detector.get_M_inv()
+                internal_board.update_occupied_dicts(M, pawn_centers_green_stable, pawn_centers_blue_stable)
+
                 if frame_i % SKIP_FRAMES == 1:
-                    internal_board.update_occupied_dicts(M, pawn_centers_green_stable, pawn_centers_blue_stable)
                     internal_board.update_unwarped_overlay(frame, M_inv)
             board_corners = board_detector.board_corners
             
@@ -222,13 +223,13 @@ def main():
                     f"{winner.upper()} WINS!",
                     effect_func=EventOverlay.slide_up, 
                     duration=100 )
-                
-            if enter_home_recognizer.update(TurnStateController.ID_MARKER_MAPPING[turn_state.turn]):
-                event_overlay.add_event(
-                    f"{enter_home_recognizer.last_entered} pawn entered the home!",
-                    effect_func=partial(EventOverlay.fade_center, font_scale=2.5),
-                    duration=100
-                )
+            if turn_state.turn is not None:
+                if enter_home_recognizer.update(TurnStateController.ID_MARKER_MAPPING[turn_state.turn]):
+                    event_overlay.add_event(
+                        f"{enter_home_recognizer.last_entered} pawn entered the home!",
+                        effect_func=partial(EventOverlay.fade_center, font_scale=2.5),
+                        duration=100
+                    )
 
             if leave_base_recognizer.update():
                 event_overlay.add_event(

@@ -40,7 +40,7 @@ class DieThrowRecognizer:# new chat version i did not check it but works better 
             # else:
         #raise Exception("Sorry, no die detected but event detected, sth is no yes")
             
-        print("die cur", self.detected_die_pos_last)
+        #print("die cur", self.detected_die_pos_last)
         self.frame_num = frame_num
         self.history_bin.append(1 if if_die_visible else 0)
         if if_die_visible:

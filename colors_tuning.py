@@ -1,10 +1,11 @@
 import cv2
 import numpy as np
 
+from engine.helpers import find_main_folder
 
 import os
 
-FILE = "some_frame.png"
+FILE = "some_frame2.png"
 
 def load_img(path, frame_idx=0):
     """
@@ -44,11 +45,12 @@ def load_img(path, frame_idx=0):
     raise ValueError(f"Unsupported file type: {ext}")
 
 
+#[070, 110]
 
 
 
-
-folder = os.path.dirname(os.path.abspath(__file__))
+# folder = os.path.dirname(os.path.abspath(__file__))
+folder = find_main_folder()
 file_fol = os.path.join(folder, "data", FILE)
 img_bgr = load_img(file_fol)
 img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
@@ -60,7 +62,7 @@ def nothing(x):
     pass
 
 cv2.namedWindow("mask", cv2.WINDOW_NORMAL)
-cv2.resizeWindow("mask", 800, 450)
+cv2.resizeWindow("mask", 1000, 700)
 
 cv2.createTrackbar("H min", "mask", 0, 179, nothing)
 cv2.createTrackbar("H max", "mask", 179, 179, nothing) 
