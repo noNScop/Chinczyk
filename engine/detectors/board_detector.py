@@ -266,6 +266,27 @@ class BoardDetector:
         orig_pts = cv2.perspectiveTransform(pts, self.M_inv).reshape(-1, 2)
         return orig_pts
     
+    def points_inside_board(self, points):
+        """
+        points: iterable of (x, y)
+        returns: list of booleans
+        """
+        if self.board is None:
+            raise RuntimeError("Board not detected")
+
+        h, w = self.board.shape
+        results = []
+
+        for x, y in points:
+            x = int(round(x))
+            y = int(round(y))
+
+            if 0 <= x < w and 0 <= y < h:
+                results.append(self.board[y, x] > 0)
+            else:
+                results.append(False)
+
+        return results
 
     @property
     def ready(self):

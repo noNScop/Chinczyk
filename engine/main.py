@@ -20,6 +20,7 @@ from event_recognizers.win_game_recognizer import WinGameRecognizer
 from event_recognizers.die_throw_recognizer import DieThrowRecognizer
 from event_recognizers.enter_home_recognizer import EnterHomeRecognizer
 from event_recognizers.leave_base_recognizer import LeaveBaseRecognizer
+from event_recognizers.pawn_capture_recognizer import PawnCaptureRecognizer
 
 from overlays.corner_overlay import CornerOverlay
 from overlays.video_overlay import VideoOverlay
@@ -104,12 +105,13 @@ def main():
         internal_board = InternalBoardDetector(tiles, tiles_blue, tiles_green, board_relaxed_bgr, move_suggester)
 
         turn_state = TurnStateController(marker_tiles, move_suggester)
-        pawn_state = PawnStateController(tiles, tiles_blue, tiles_green, turn_state)
+        pawn_state = PawnStateController(tiles, tiles_blue, tiles_green, turn_state, board_detector)
 
         die_throw_recognizer = DieThrowRecognizer(move_suggester)
         win_recognizer = WinGameRecognizer(pawn_state)
         enter_home_recognizer = EnterHomeRecognizer(pawn_state)
         leave_base_recognizer = LeaveBaseRecognizer(pawn_state)
+        pawn_capture_recognizer = PawnCaptureRecognizer(pawn_state)
 
         event_overlay = EventOverlay()
 
@@ -243,11 +245,11 @@ def main():
                     effect_func=partial(EventOverlay.fade_center, font_scale=2.5)
                 )
 
-            # if pawn_capture_recognizer.update():
-            #     event_overlay.add_event(
-            #         f"{pawn_capture_recognizer.prey} pawn has been slayed!",
-            #         effect_func=partial(EventOverlay.bounce_text, font_scale=2.5)
-            #     )
+            if pawn_capture_recognizer.update():
+                event_overlay.add_event(
+                    f"{pawn_capture_recognizer.prey} pawn has been slayed!",
+                    effect_func=partial(EventOverlay.bounce_text, font_scale=2.5)
+                )
 
 
 

@@ -10,9 +10,12 @@ class PawnStateController():
     ID_MARKER_MAPPING = {0: "blue", 1:"green"}
 
 
-    def __init__(self, tiles, tiles_blue, tiles_green, turn_state):
+    def __init__(self, tiles, tiles_blue, tiles_green, turn_state, board_detector):
         # Reference to the current turn state (used to gate position updates)
         self.turn_state = turn_state
+
+        # Used to determine if a pawn is on the board or in the base
+        self.board_detector = board_detector
 
         # Accepted pawn-to-tile mapping for the current stable state
         self.positions = None
@@ -106,25 +109,25 @@ class PawnStateController():
 
     def update_base_info(self, green_pos_stable, blues_pos_stable):
         """
-        Infers base occupancy indirectly.
+        Infers base occupancy by checking whether each pawn lies inside the board region.
 
-        Assumptions:
-        - All 4 pawns per color must be visible.
-        - Any pawn not present in the accepted tile mapping
-        is assumed to still be in the base -- which is guaranteed by the update_positions method.
+        Preconditions:
+        - Exactly 4 stable pawn positions per color must be available.
+        - The board detector must have a valid board mask.
 
-        Base count is derived as:
-            4 − (pawns in home + pawns on board)
+        Logic:
+        - A pawn is considered "in base" if its position lies outside the detected board mask.
+        - Base count equals the number of pawns outside the board region.
 
-        This avoids classifying pawns as 'in base' due to temporary
-        disappearance from the board region.
+        This approach avoids false base classification caused by
+        transient detection dropouts, assuming stability filtering
+        has already been applied upstream.
         """
-        if len(blues_pos_stable) == 4 and len(green_pos_stable) == 4:
-            self.blue_base = 4
+        if len(green_pos_stable) == 4 and len(blues_pos_stable) == 4:
             self.green_base = 4
-            for color in self.positions.values():
-                if color == "green":
-                    self.green_base -= 1
-                else:
-                    self.blue_base -= 1
-                    
+            for res in self.board_detector.points_inside_board(green_pos_stable):
+                self.green_base -= res
+
+            self.blue_base = 4
+            for res in self.board_detector.points_inside_board(blues_pos_stable):
+                self.blue_base -= res
