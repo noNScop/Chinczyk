@@ -3,9 +3,12 @@ import numpy as np
 from collections import Counter
 import cv2
 
+from game_state.move_suggester import MoveSuggester
+
+
 
 class DieThrowRecognizer:# new chat version i did not check it but works better than old one
-    def __init__(self, patience=60, min_delay=90, thresh=0.66, reset_frac=0.95):
+    def __init__(self, move_suggester: MoveSuggester, patience=60, min_delay=90, thresh=0.66, reset_frac=0.95):
         """
         patience : number of frames to keep in history
         min_delay : minimum frames between events
@@ -30,6 +33,9 @@ class DieThrowRecognizer:# new chat version i did not check it but works better 
         self.detected_die_pos_last = None
 
         self.dist_threshold = 50 # TO TUNE
+
+        self.move_suggester = move_suggester
+
 
     def update(self, die_number, if_die_visible, frame_num, M, all_die_pos, board_poly):# na razie jest prowizorka i może być kilka kości wykrytych all_die_pos is list
         """Call every frame"""
@@ -68,6 +74,9 @@ class DieThrowRecognizer:# new chat version i did not check it but works better 
             self.M = M
             if self._cancel_event():
                 self.if_event = False
+            else:
+                number = self.which_event()
+                self.move_suggester.start_suggestion(number)
         
 
     def _if_event(self, board_poly):

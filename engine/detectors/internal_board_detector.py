@@ -2,14 +2,16 @@ import cv2
 import numpy as np
 import os
 from helpers import find_main_folder
+from game_state.move_suggester import MoveSuggester
 
 class InternalBoardDetector():
-    def __init__(self, tiles, tiles_blue, tiles_green, board_relaxed_bgr, canonical_size = 800):
+    def __init__(self, tiles, tiles_blue, tiles_green, board_relaxed_bgr, move_suggester : MoveSuggester, canonical_size = 800):
         self.tiles = tiles
         self.tiles_blue = tiles_blue
         self.tiles_green = tiles_green
         self.board_relaxed_bgr = board_relaxed_bgr
         self.canonical_size = canonical_size
+        self.move_suggester = move_suggester
 
         all_tiles = {}
         all_tiles.update(tiles)        
@@ -117,7 +119,7 @@ class InternalBoardDetector():
             if len(pawn_coords) == 0:
                 return
             pts = np.array(pawn_coords, dtype=np.float32).reshape(-1, 1, 2)
-            warped_pts = cv2.perspectiveTransform(pts, M).reshape(-1, 2) # heavy computationally
+            warped_pts = cv2.perspectiveTransform(pts, M).reshape(-1, 2) # heavy computationally (or maybe not)
 
             for px, py in warped_pts:
                 px, py = int(px), int(py)
@@ -137,58 +139,69 @@ class InternalBoardDetector():
 
         return occupied_tiles
 
-
     def update_unwarped_overlay(self, frame, M_inv, fill_alpha=0.3, outline_alpha=1.0, thickness=5):
         """
         Draw convex hulls of tiles with fill and outline alpha, then warp overlay back to original frame.
-        
-        Parameters:
-        - frame: original frame (H, W, 3)
-        - M_inv: inverse perspective matrix (warped -> original)
-        - fill_alpha: transparency of filled tile color
-        - outline_alpha: transparency of hull outline
-        - thickness: outline thickness
+        Highlight suggested tiles with a different color.
         """
-        # Use uint8 for OpenCV compatibility
+
+        suggestions = self.move_suggester.get_suggestions()
+        suggested_tiles = set(suggestions) if suggestions is not None else set()
+
         overlay = np.zeros((self.canonical_size, self.canonical_size, 3), dtype=np.uint8)
 
         for tile_id, region_ids in self.tile_regions_dict.items():
             all_points = []
 
-            # collect all points of all regions for this tile
             for r in region_ids:
                 ys, xs = np.where(self.regions == r)
-                all_points.extend(list(zip(xs, ys)))
+                all_points.extend(zip(xs, ys))
 
             if len(all_points) < 3:
-                continue  # need at least 3 points for convex hull
+                continue
 
             all_points = np.array(all_points, dtype=np.int32)
             hull = cv2.convexHull(all_points)
 
-            # Determine tile color
+            # ---------------- COLOR SELECTION ----------------
+
             if tile_id in self.occupied_tiles:
+                # occupied tiles have highest priority
                 if self.occupied_tiles[tile_id] == 'green':
                     color = np.array([0, 255, 0], dtype=np.uint8)
                 elif self.occupied_tiles[tile_id] == 'blue':
                     color = np.array([0, 0, 255], dtype=np.uint8)
                 else:
                     color = np.array([200, 200, 200], dtype=np.uint8)
+
+            elif tile_id in suggested_tiles:
+                # suggested move tile
+                color = np.array([0, 255, 255], dtype=np.uint8)  # yellow/cyan highlight
+
             else:
+                # normal empty tile
                 color = np.array([200, 200, 200], dtype=np.uint8)
 
-            # Fill tile with alpha
+            # ---------------- FILL ----------------
+
             mask = np.zeros((self.canonical_size, self.canonical_size), dtype=np.uint8)
             cv2.fillPoly(mask, [hull], 1)
             mask_bool = mask.astype(bool)
-            overlay[mask_bool] = ((fill_alpha * color + (1 - fill_alpha) * overlay[mask_bool])).astype(np.uint8)
 
-            # Draw outline with alpha
+            overlay[mask_bool] = (
+                fill_alpha * color + (1 - fill_alpha) * overlay[mask_bool]
+            ).astype(np.uint8)
+
+            # ---------------- OUTLINE ----------------
+
             outline_img = np.zeros_like(overlay)
-            cv2.polylines(outline_img, [hull], isClosed=True, color=color.tolist(), thickness=thickness)
-            overlay = np.where(outline_img > 0,
-                            (outline_alpha * outline_img + (1 - outline_alpha) * overlay).astype(np.uint8),
-                            overlay)
+            cv2.polylines(outline_img, [hull], True, color.tolist(), thickness)
+
+            overlay = np.where(
+                outline_img > 0,
+                (outline_alpha * outline_img + (1 - outline_alpha) * overlay).astype(np.uint8),
+                overlay
+            )
 
         # Warp back to original frame
         self.last_unwarped_overlay = cv2.warpPerspective(
@@ -196,4 +209,66 @@ class InternalBoardDetector():
             M_inv,
             (frame.shape[1], frame.shape[0])
         )
+
+    # def update_unwarped_overlay(self, frame, M_inv, fill_alpha=0.3, outline_alpha=1.0, thickness=5):
+    #     """
+    #     Draw convex hulls of tiles with fill and outline alpha, then warp overlay back to original frame.
+        
+    #     Parameters:
+    #     - frame: original frame (H, W, 3)
+    #     - M_inv: inverse perspective matrix (warped -> original)
+    #     - fill_alpha: transparency of filled tile color
+    #     - outline_alpha: transparency of hull outline
+    #     - thickness: outline thickness
+    #     """
+
+    #     suggestions = self.move_suggester.get_suggestions() # might be none
+    #     # Use uint8 for OpenCV compatibility
+    #     overlay = np.zeros((self.canonical_size, self.canonical_size, 3), dtype=np.uint8)
+
+    #     for tile_id, region_ids in self.tile_regions_dict.items():
+    #         all_points = []
+
+    #         # collect all points of all regions for this tile
+    #         for r in region_ids:
+    #             ys, xs = np.where(self.regions == r)
+    #             all_points.extend(list(zip(xs, ys)))
+
+    #         if len(all_points) < 3:
+    #             continue  # need at least 3 points for convex hull
+
+    #         all_points = np.array(all_points, dtype=np.int32)
+    #         hull = cv2.convexHull(all_points)
+
+    #         # Determine tile color
+    #         if tile_id in self.occupied_tiles:
+    #             if self.occupied_tiles[tile_id] == 'green':
+    #                 color = np.array([0, 255, 0], dtype=np.uint8)
+    #             elif self.occupied_tiles[tile_id] == 'blue':
+    #                 color = np.array([0, 0, 255], dtype=np.uint8)
+    #             else:
+    #                 color = np.array([200, 200, 200], dtype=np.uint8)
+    #         else:
+    #             color = np.array([200, 200, 200], dtype=np.uint8)
+
+    #         # Fill tile with alpha
+    #         mask = np.zeros((self.canonical_size, self.canonical_size), dtype=np.uint8)
+    #         cv2.fillPoly(mask, [hull], 1)
+    #         mask_bool = mask.astype(bool)
+    #         overlay[mask_bool] = ((fill_alpha * color + (1 - fill_alpha) * overlay[mask_bool])).astype(np.uint8)
+
+    #         # Draw outline with alpha
+    #         outline_img = np.zeros_like(overlay)
+    #         cv2.polylines(outline_img, [hull], isClosed=True, color=color.tolist(), thickness=thickness)
+    #         overlay = np.where(outline_img > 0,
+    #                         (outline_alpha * outline_img + (1 - outline_alpha) * overlay).astype(np.uint8),
+    #                         overlay)
+
+
+    #     # Warp back to original frame
+    #     self.last_unwarped_overlay = cv2.warpPerspective(
+    #         overlay,
+    #         M_inv,
+    #         (frame.shape[1], frame.shape[0])
+    #     )
 

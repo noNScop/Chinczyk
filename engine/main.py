@@ -25,6 +25,8 @@ from overlays.corner_overlay import CornerOverlay
 from overlays.video_overlay import VideoOverlay
 from overlays.event_overlay import EventOverlay
 
+from game_state.move_suggester import MoveSuggester
+
 # aim flow:
 # [Detectors]  →  [StateControllers]  →  [GameState]  →  [Overlay / Logic]
 
@@ -95,14 +97,16 @@ def main():
         video_name = Path(video).name
         cap = cv2.VideoCapture(video)
 
+        move_suggester = MoveSuggester()
+
         die_handler = Die_handler() 
         board_detector = BoardDetector()
-        internal_board = InternalBoardDetector(tiles, tiles_blue, tiles_green, board_relaxed_bgr)
+        internal_board = InternalBoardDetector(tiles, tiles_blue, tiles_green, board_relaxed_bgr, move_suggester)
 
-        turn_state = TurnStateController(marker_tiles)
+        turn_state = TurnStateController(marker_tiles, move_suggester)
         pawn_state = PawnStateController(tiles, tiles_blue, tiles_green, turn_state)
 
-        die_throw_recognizer = DieThrowRecognizer()
+        die_throw_recognizer = DieThrowRecognizer(move_suggester)
         win_recognizer = WinGameRecognizer(pawn_state)
         enter_home_recognizer = EnterHomeRecognizer(pawn_state)
         leave_base_recognizer = LeaveBaseRecognizer(pawn_state)
@@ -180,7 +184,9 @@ def main():
             if board_detector.ready:
                 pawn_state.update(pawn_centers_green_stable, pawn_centers_blue_stable, internal_board.occupied_tiles)
 
-                
+            if move_suggester.get_if_suggest():
+                move_suggester.make_suggestions(internal_board.occupied_tiles, turn_state.turn, pawn_state.blue_base, pawn_state.green_base )
+
                 
 
 

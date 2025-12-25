@@ -3,17 +3,19 @@ import numpy as np
 import os
 from helpers import find_main_folder
 from collections import deque
+from game_state.move_suggester import MoveSuggester
 
 class TurnStateController():    
     ID_MARKER_MAPPING = {0: "blue", 1:"green"}
 
 
-    def __init__(self, marker_tiles):
+    def __init__(self, marker_tiles, move_suggester: MoveSuggester):
         self.marker_tiles = marker_tiles
         self.markers_all = [] # on some frames more than 1 marker are recognized
         self.turn = None
 
         self.sim_history = deque(maxlen=30)  # each entry = [sim_blue, sim_green]
+        self.move_suggerster = move_suggester
 
     def reset_internal_markers(self):
         self.markers_all = []
@@ -38,8 +40,10 @@ class TurnStateController():
         self.sim_history.append([sim_blue, sim_green])
 
         self.reset_internal_markers()
-        self._decide_from_memory()
-
+        turn = self._decide_from_memory()
+        if turn != self.turn:
+            self.move_suggerster.stop_suggestion()
+        self.turn = turn
 
     def _decide_from_memory(self):
         sims = np.array(self.sim_history)
@@ -48,9 +52,10 @@ class TurnStateController():
         total_green = sims[:, 1].sum()
 
         if total_blue > total_green:
-            self.turn = 0
+            turn = 0
         else:
-            self.turn = 1
+            turn = 1
+        return turn
 
         # if max(total_blue, total_green) < 1e-3:
         #     return  # not enough evidence
