@@ -14,14 +14,13 @@ class WinGameRecognizer:
 
 
     def update(self):
-        if self.pawn_state.green_home == self.pawns_per_player:
+        if self.pawn_state.green_home == self.pawns_per_player and self.winner is None:
             self.winner = "green"
             self.game_over = True
-        elif self.pawn_state.blue_home == self.pawns_per_player:
+        elif self.pawn_state.blue_home == self.pawns_per_player and self.winner is None:
             self.winner = "blue"
             self.game_over = True
         else:
-            self.winner = None
             self.game_over = False
         return self.game_over
 

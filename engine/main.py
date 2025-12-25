@@ -215,7 +215,7 @@ def main():
             # Events
             #####################################
 
-            print("event ", die_throw_recognizer.which_event(), die_throw_recognizer.frame_num - die_throw_recognizer.last_event_frame)
+            # print("event ", die_throw_recognizer.which_event(), die_throw_recognizer.frame_num - die_throw_recognizer.last_event_frame)
 
             if die_throw_recognizer.if_event:
                 event_overlay.add_event(
@@ -229,13 +229,13 @@ def main():
                     f"{winner.upper()} WINS!",
                     effect_func=EventOverlay.slide_up, 
                     duration=100 )
-            if turn_state.turn is not None:
-                if enter_home_recognizer.update(TurnStateController.ID_MARKER_MAPPING[turn_state.turn]):
-                    event_overlay.add_event(
-                        f"{enter_home_recognizer.last_entered} pawn entered the home!",
-                        effect_func=partial(EventOverlay.fade_center, font_scale=2.5),
-                        duration=100
-                    )
+                
+            if win_recognizer.get_winner() is None and enter_home_recognizer.update(TurnStateController.ID_MARKER_MAPPING[turn_state.turn]):
+                event_overlay.add_event(
+                    f"{enter_home_recognizer.last_entered} pawn entered the home!",
+                    effect_func=partial(EventOverlay.fade_center, font_scale=2.5),
+                    duration=100
+                )
 
             if leave_base_recognizer.update():
                 event_overlay.add_event(

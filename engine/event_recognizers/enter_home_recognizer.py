@@ -26,17 +26,21 @@ class EnterHomeRecognizer():
 
 
     def update(self, turn):
-        if turn == "green" :
+        if turn == "green":
             if self.green_at_home is not None:
                 if self.pawn_state.green_home > self.green_at_home:
                     self.green_at_home = self.pawn_state.green_home
                     self.last_entered = "Green"
                     return True
+            else:
+                self.green_at_home = self.pawn_state.green_home
         else:
             if self.blue_at_home is not None:
                 if self.pawn_state.blue_home > self.blue_at_home:
                     self.blue_at_home = self.pawn_state.blue_home
                     self.last_entered = "Blue"
                     return True
+            else:
+                self.blue_at_home = self.pawn_state.blue_home
         
         return False
