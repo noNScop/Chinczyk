@@ -256,7 +256,7 @@ def main():
                     duration=60
                 )
 
-            if pawn_capture_recognizer.update():
+            if turn_state.turn is not None and pawn_capture_recognizer.update():
                 event_overlay.add_event(
                     f"{pawn_capture_recognizer.prey} PAWN SLAYED!",
                     effect_func=[
