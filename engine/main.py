@@ -221,34 +221,50 @@ def main():
 
             if die_throw_recognizer.if_event:
                 event_overlay.add_event(
-                "throwed die:" + str(die_throw_recognizer.which_event()) ,
-                effect_func=EventOverlay.outline_text,
-                duration=50,)
+                    f"THROW: {die_throw_recognizer.which_event()}",
+                    effect_func=[
+                        EventOverlay.flash_bg,
+                        EventOverlay.pop_scale,
+                        EventOverlay.glow_text
+                    ],
+                    duration=40
+                )
 
             if win_recognizer.update():
                 winner = win_recognizer.get_winner()
                 event_overlay.add_event(
                     f"{winner.upper()} WINS!",
-                    effect_func=EventOverlay.slide_up, 
-                    duration=100 )
-                
-            if win_recognizer.get_winner() is None and enter_home_recognizer.update(TurnStateController.ID_MARKER_MAPPING[turn_state.turn]):
+                    effect_func=EventOverlay.casino_win,
+                    duration=120
+                )
+
+            if win_recognizer.get_winner() is None and enter_home_recognizer.update(
+                    TurnStateController.ID_MARKER_MAPPING[turn_state.turn]):
                 event_overlay.add_event(
-                    f"{enter_home_recognizer.last_entered} pawn entered the home!",
-                    effect_func=partial(EventOverlay.fade_center, font_scale=2.5),
-                    duration=100
+                    f"{enter_home_recognizer.last_entered} pawn entered HOME!",
+                    effect_func=EventOverlay.big_popup,
+                    duration=80
                 )
 
             if leave_base_recognizer.update():
                 event_overlay.add_event(
-                    f"{leave_base_recognizer.player} pawn left the base!",
-                    effect_func=partial(EventOverlay.fade_center, font_scale=2.5)
+                    f"{leave_base_recognizer.player} pawn left the BASE!",
+                    effect_func=[
+                        EventOverlay.pop_scale,
+                        EventOverlay.shake
+                    ],
+                    duration=60
                 )
 
             if pawn_capture_recognizer.update():
                 event_overlay.add_event(
-                    f"{pawn_capture_recognizer.prey} pawn has been slayed!",
-                    effect_func=partial(EventOverlay.bounce_text, font_scale=2.5)
+                    f"{pawn_capture_recognizer.prey} PAWN SLAYED!",
+                    effect_func=[
+                        EventOverlay.flash_bg,
+                        EventOverlay.shake,
+                        EventOverlay.glow_text
+                    ],
+                    duration=70
                 )
 
 
