@@ -5,7 +5,7 @@ from engine.helpers import find_main_folder
 
 import os
 
-FILE = "some_frame2.png"
+FILE = "some_frame5.png"
 
 def load_img(path, frame_idx=0):
     """
@@ -53,7 +53,8 @@ def load_img(path, frame_idx=0):
 folder = find_main_folder()
 file_fol = os.path.join(folder, "data", FILE)
 img_bgr = load_img(file_fol)
-img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+img_hsv = img_bgr
+# img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
 
 
 

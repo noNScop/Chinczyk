@@ -19,7 +19,7 @@ class PlayerTurnDieDetector:
 
         if area > 10000 and dots_num < 1 and circle_similarity == 4:
             return 'marker'
-        elif area > 2700 and area < 4500 and circle_similarity >=4 and circle_similarity <= 6:
+        elif area > 2500 and area < 4500 and circle_similarity >=4 and circle_similarity <= 6:
             return 'die'
         elif circle_similarity > 5 and area > 4500:
             return 'reflection'
@@ -32,13 +32,14 @@ class PlayerTurnDieDetector:
     def find_objects(frame_bgr):
         frame_hsv = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2HSV)
 
-        lower = np.array([0, 0, 185]) #hsv
-        upper = np.array([255, 80, 255]) #hsv
+        lower_hsv = np.array([7, 13, 154]) #hsv
+        upper_hsv = np.array([19, 75, 255]) #hsv
 
         lower_bgr = np.array([135, 0, 160]) #bgr
         upper_bgr = np.array([255, 255, 255])#bgr
         mask = cv2.inRange(frame_bgr, lower_bgr, upper_bgr)
 
+        mask_hsv = cv2.inRange(frame_hsv, lower_hsv, upper_hsv)
         # plt.figure(figsize=(6,6))
         # plt.imshow(mask, cmap='gray') ######
         # plt.title("HSV Mask")
@@ -48,7 +49,8 @@ class PlayerTurnDieDetector:
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        mask_combined = np.logical_or(mask, mask_hsv).astype(np.uint8) * 255
+        contours, _ = cv2.findContours(mask_combined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours:
             return [], []
 
