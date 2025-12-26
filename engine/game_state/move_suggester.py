@@ -10,6 +10,7 @@ class MoveSuggester:
 
         self.suggestions = None
         self.if_suggest= None
+        self.new_suggestion = None
 
     def suggest_moves(self, occupied_tiles : dict, if_green_turn : bool, blue_base : int, green_base: int,  ):# occupied_tiles example {47: 'green', 16: 'green', 19: 'green', 38: 'blue', 42: 'blue'}
 
@@ -47,6 +48,7 @@ class MoveSuggester:
 
     def start_suggestion(self, die_number):  #launched by die_throw recognizer when throw recognized
         self.if_suggest = True
+        self.new_suggestion = True
         self.die_number = die_number
         print("starting suggestions!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
@@ -73,7 +75,8 @@ class MoveSuggester:
     
     def make_suggestions(self, occupied_tiles : dict, if_green_turn : bool, blue_base : int,  green_base: int ): # launched in main
         print("making suggestions##################################")
-        if self.suggestions == None:
+        if self.suggestions == None or self.new_suggestion == True:
+            self.new_suggestion = False
             self.suggestions = self.suggest_moves( occupied_tiles , if_green_turn, blue_base, green_base)
 
     def get_suggestions(self):

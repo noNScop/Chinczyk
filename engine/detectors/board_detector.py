@@ -9,7 +9,7 @@ class BoardDetector:
 
         self.M = None
         self.board_corners = None
-        self.countur = None
+        #self.countur = None
         self.M = None
         self.M_inv = None
         self.vertices = None
@@ -84,9 +84,9 @@ class BoardDetector:
 
     
     @staticmethod
-    def get_corners_ordered(countur):
-        peri = cv2.arcLength(countur, True)
-        approx = cv2.approxPolyDP(countur, 0.01 * peri, True)
+    def get_corners_ordered(contour):
+        peri = cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, 0.01 * peri, True)
 
         try:
             pts = approx.reshape(4, 2)
@@ -266,15 +266,24 @@ class BoardDetector:
         orig_pts = cv2.perspectiveTransform(pts, self.M_inv).reshape(-1, 2)
         return orig_pts
     
-    def points_inside_board(self, points):
+    def points_inside_board(self, points_unwarped):
         """
         points: iterable of (x, y)
         returns: list of booleans
         """
+
+        points = self.warp_points(points_unwarped)
+
+        print(points_unwarped, " un")
+        print(points)
+
         if self.board is None:
             raise RuntimeError("Board not detected")
 
-        h, w = self.board.shape
+        
+        #h, w = self.board.shape
+        #print("hwhwhwhw", h, w)
+        h, w, = self.canonical_size, self.canonical_size
         results = []
 
         for x, y in points:
@@ -282,7 +291,8 @@ class BoardDetector:
             y = int(round(y))
 
             if 0 <= x < w and 0 <= y < h:
-                results.append(self.board[y, x] > 0)
+                #results.append(self.board[y, x] > 0)
+                results.append(True)
             else:
                 results.append(False)
 
