@@ -238,7 +238,7 @@ def main():
                     duration=120
                 )
 
-            if win_recognizer.get_winner() is None and enter_home_recognizer.update(
+            if turn_state.turn is not None and win_recognizer.get_winner() is None and enter_home_recognizer.update(
                     TurnStateController.ID_MARKER_MAPPING[turn_state.turn]):
                 event_overlay.add_event(
                     f"{enter_home_recognizer.last_entered} pawn entered HOME!",
