@@ -26,8 +26,12 @@ class BoardDetector:
         self.detected_lines =  self.detect_edges_new(self.board)
         self.vertices = self.choose_edges(self.board)
 
+        if self.vertices is None or len(self.vertices) != 4:
+            return
+        
         if self.board is None:
             return
+        
         contour = np.array(self.vertices, dtype=np.float32).reshape(-1, 1, 2)
         board_corners = self.get_corners_ordered(contour) # f boarder not fully visible i dont update its parameters
         if board_corners is None:
@@ -231,6 +235,11 @@ class BoardDetector:
                 best_score = score
                 best_quad = quad
             # if variance too big of the best quad then we can discard the result
+
+        # There is a case when best_quad is None and it causes an error, so it needs to be handled
+        if best_quad is None:
+            self.chosen_edges = None
+            return
 
         self.chosen_edges = best_quad
         vertices = []
