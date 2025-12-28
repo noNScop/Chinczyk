@@ -1,8 +1,8 @@
 import cv2
-import numpy as np
-from collections import deque
 import math
 import random
+import numpy as np
+from collections import deque
 
 class EventOverlay:
     """

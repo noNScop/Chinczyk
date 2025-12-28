@@ -3,14 +3,13 @@ import cv2
 import numpy as np
 from pathlib import Path
 from tqdm.auto import tqdm
-from functools import partial
 
 from helpers import input_videos, find_main_folder
 
-from detectors.pawn_detector import PawnDetector
-from detectors.playerTurn_die_detector import PlayerTurnDieDetector
 from detectors.die_handler import Die_handler
+from detectors.pawn_detector import PawnDetector
 from detectors.board_detector import BoardDetector
+from detectors.playerTurn_die_detector import PlayerTurnDieDetector
 from detectors.internal_board_detector import InternalBoardDetector
 
 from state_controllers.turn_state_controller import TurnStateController
@@ -22,102 +21,96 @@ from event_recognizers.enter_home_recognizer import EnterHomeRecognizer
 from event_recognizers.leave_base_recognizer import LeaveBaseRecognizer
 from event_recognizers.pawn_capture_recognizer import PawnCaptureRecognizer
 
-from overlays.corner_overlay import CornerOverlay
 from overlays.video_overlay import VideoOverlay
 from overlays.event_overlay import EventOverlay
+from overlays.corner_overlay import CornerOverlay
 
 from game_state.move_suggester import MoveSuggester
 
-# aim flow:
-# [Detectors]  →  [StateControllers]  →  [GameState]  →  [Overlay / Logic]
-
-class GameState:
-    # Each object will likely need some internal memory to account for situation when it disappears from the view,
-    # so instead of python primitives like strings we will need a class for each object
-
-    def __init__(self, internal_board: InternalBoardDetector):
-        self.turn = None # green / blue
-
-        # Each can be -  # of tile / # home tile / base
-        #self.green_pawns = [None, None, None, None] 
-        #self.blue_pawns = [None, None, None, None]
-        # as we dont differentiate pawns of player i am not sure if the above would work
-        self.blue_home = None # num of blue pawns in home
-        self.green_home = None
-        self.blue_base = None
-        self.green_base = None
-
-
-        self.die = None # most recent number on the die
-
-        self.throws = None # Number of throws remaining for the current player 0-3
-
-        self.internal_board_detector
-
-    def update(self, turn, die_score, ):
-        # maybe allow other classes accumulate info from may frames and decide on true state, here we will jusst gather info
-        self.turn = self.update_turn(turn)
-        self.die = self.update_die(die_score)
-
-
-
-    def update_turn(self, turn):
-        self.turn = turn
-
-    def update_die(self, die_score):
-        self.die = die_score
-
-
-class EventDetector:
-    # Likely each event will require separatew detector like object detectors
-    # Track events like pawn anihilation, or exiting the base
-    # Separate class because I believe that events can be treated independently to the game state
-    def __init__(self):
-        pass
-
-
-
 def main():
-    SKIP_FRAMES = 10 # only in 1/SKIP_FRAMES the most heavy computationaly thisgs will be performed
+    # ============================================================
+    # Configuration
+    # ============================================================
+
+    # Perform heavy computations only once every SKIP_FRAMES frames
+    # (e.g. expensive warping / overlays that do not need per-frame updates)
+
+    SKIP_FRAMES = 10
+
+    # Input videos to process
     videos = input_videos()
+
+    # Root project directory (used to resolve all data paths)
     main_folder = find_main_folder()
-    tiles = np.load(os.path.join(main_folder,"engine/board_data/regularTiles_gameModel.npy"), allow_pickle=True).item()
-    tiles_green = np.load(os.path.join(main_folder,"engine/board_data/greenHomeTiles_gameModel.npy"), allow_pickle=True).item()
-    tiles_blue = np.load(os.path.join(main_folder,"engine/board_data/blueHomeTiles_gameModel.npy"), allow_pickle=True).item()
-    marker_tiles = np.load(os.path.join(main_folder,"engine/board_data/markerTiles_gameModel.npy"), allow_pickle=True).item() 
-    board_bgr = cv2.imread(os.path.join(main_folder, "data", "board.jpg"))
+
+    # ============================================================
+    # Static game model data (precomputed, loaded once)
+    # ============================================================
+
+    # Board tile mappings used by the internal game model
+    tiles = np.load(
+        os.path.join(main_folder,"engine/board_data/regularTiles_gameModel.npy"), 
+        allow_pickle=True
+    ).item()
+
+    tiles_green = np.load(
+        os.path.join(main_folder,"engine/board_data/greenHomeTiles_gameModel.npy"), 
+        allow_pickle=True
+    ).item()
+
+    tiles_blue = np.load(
+        os.path.join(main_folder,"engine/board_data/blueHomeTiles_gameModel.npy"), 
+        allow_pickle=True
+    ).item()
+
+    marker_tiles = np.load(
+        os.path.join(main_folder,"engine/board_data/markerTiles_gameModel.npy"), 
+        allow_pickle=True
+    ).item()
+
+    # Reference board images
     board_relaxed_bgr = cv2.imread(os.path.join(main_folder, "data", "board_relaxed.jpg"))
-
-
 
     print("Videos to be processed:", *videos, sep="\n")
 
+    # Output directory
     os.makedirs(os.path.join(main_folder, "output"), exist_ok=True)
 
+    # ============================================================
+    # Main video processing loop
+    # ============================================================
     for video in videos:
         video_name = Path(video).name
         cap = cv2.VideoCapture(video)
 
+        # --------------------------------------------------------
+        # Core game logic / state managers
+        # --------------------------------------------------------
         move_suggester = MoveSuggester()
+        die_handler = Die_handler()
 
-        die_handler = Die_handler() 
         board_detector = BoardDetector()
         internal_board = InternalBoardDetector(tiles, tiles_blue, tiles_green, board_relaxed_bgr, move_suggester)
 
+        # State controllers
         turn_state = TurnStateController(marker_tiles, move_suggester)
         pawn_state = PawnStateController(tiles, tiles_blue, tiles_green, turn_state, board_detector)
 
+        # --------------------------------------------------------
+        # Event recognizers (stateless detectors + temporal logic)
+        # --------------------------------------------------------
         die_throw_recognizer = DieThrowRecognizer(move_suggester)
         win_recognizer = WinGameRecognizer(pawn_state)
         enter_home_recognizer = EnterHomeRecognizer(pawn_state)
         leave_base_recognizer = LeaveBaseRecognizer(pawn_state)
         pawn_capture_recognizer = PawnCaptureRecognizer(pawn_state)
 
+        # Overlay manager for animated / temporal UI events
         event_overlay = EventOverlay()
 
-
-
-        # Video properties
+        # --------------------------------------------------------
+        # Video I/O setup
+        # --------------------------------------------------------
         fps = cap.get(cv2.CAP_PROP_FPS)
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -125,37 +118,50 @@ def main():
 
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         output_writer = cv2.VideoWriter(os.path.join(main_folder, 'output', video_name), fourcc, fps, (width, height))
+
         if not output_writer.isOpened():
             print("VideoWriter failed to open:", f"output/{video_name}")
             continue
 
+        # ========================================================
+        # Frame-by-frame processing
+        # ========================================================
         for frame_i in tqdm(range(total_frames), desc="Processing video"):
             ret, frame = cap.read()
-            output_frame = frame.copy()
             if not ret:
                 break
 
-            pawn_centers_green = PawnDetector.find_green_pawns(frame)
-            pawn_centers_blue = PawnDetector.find_blue_pawns(frame)
+            # Copy frame for drawing overlays
+            output_frame = frame.copy()
 
-            pawn_centers_green_stable = pawn_centers_green #placeholder, maybe there should be class to make positions consistent
-            pawn_centers_blue_stable = pawn_centers_blue
+            # ----------------------------------------------------
+            # Pawn detection (color-based)
+            # ----------------------------------------------------
+            pawn_centers_green_stable = PawnDetector.find_green_pawns(frame)
+            pawn_centers_blue_stable = PawnDetector.find_blue_pawns(frame)
 
-
-
-
+            # ----------------------------------------------------
+            # Board detection and homography update
+            # ----------------------------------------------------
             board_detector.update(frame)
+
             if board_detector.ready:
                 M = board_detector.get_M()
                 M_inv = board_detector.get_M_inv()
+
+                # Update internal board state using detected pawn positions
                 internal_board.update_occupied_dicts(M, pawn_centers_green_stable, pawn_centers_blue_stable)
 
+                # Expensive visualizations updated sparsely
                 if frame_i % SKIP_FRAMES == 1:
                     internal_board.update_unwarped_overlay(frame, M_inv)
+
             board_corners = board_detector.board_corners
             
-
-            dice_all = [] # probably should fix so only 1 die can be detected
+            # ----------------------------------------------------
+            # Player marker / die / reflection detection
+            # ----------------------------------------------------
+            dice_all = []
             marker_all = []
             reflection_all = []
             if_die_detected_this_frame = False
@@ -167,33 +173,46 @@ def main():
                 if label == 'die':
                     die_handler.update(frame, pts)
                     dice_all.append(pts)
-                    if_die_detected_this_frame = True # chyba trochę za dużo logiki tu się dzieje, coś z tym zrobić?
-                
-                if label == 'marker':
+                    if_die_detected_this_frame = True
+
+                elif label == 'marker':
                     turn_state.add_marker(pts)
                     marker_all.append(pts)
-                
-                if label == 'reflection':
+
+                elif label == 'reflection':
                     reflection_all.append(pts)
+
+            # ----------------------------------------------------
+            # Turn logic and dice events
+            # ----------------------------------------------------
             if board_detector.ready:
-                die_throw_recognizer.update(die_handler.get_number(), if_die_detected_this_frame, frame_i, M, dice_all, board_corners)
+                die_throw_recognizer.update(
+                    die_handler.get_number(), 
+                    if_die_detected_this_frame, 
+                    frame_i, 
+                    M, 
+                    dice_all, 
+                    board_corners
+                )
 
             if board_detector.ready:
                 turn_state.decide_on_turn(M)
 
-
-
+            # ----------------------------------------------------
+            # Pawn state update (logical board positions)
+            # ----------------------------------------------------
             if board_detector.ready:
                 pawn_state.update(pawn_centers_green_stable, pawn_centers_blue_stable, internal_board.occupied_tiles)
 
+            # ----------------------------------------------------
+            # Move suggestions
+            # ----------------------------------------------------
             if move_suggester.get_if_suggest():
                 move_suggester.make_suggestions(internal_board.occupied_tiles, turn_state.turn, pawn_state.blue_base, pawn_state.green_base )
 
-                
-
-
-
-            # Draw detected pawns
+            # ====================================================
+            # Rendering overlays
+            # ====================================================
             output_frame = VideoOverlay.draw_green_pawn_circles(output_frame, pawn_centers_green_stable)
             output_frame = VideoOverlay.draw_blue_pawn_circles(output_frame, pawn_centers_blue_stable)
 
@@ -208,17 +227,13 @@ def main():
                 output_frame = VideoOverlay.draw_board_boarder(output_frame, ordered=board_corners)
                 output_frame = VideoOverlay.draw_tile_hulls(frame=output_frame, internal_board=internal_board, draw_alpha=0.5)
 
-
-
+            # Corner UI overlays
             output_frame = CornerOverlay.draw_turn_info(output_frame, turn_state,)
             output_frame = CornerOverlay.draw_pawn_info(output_frame, pawn_state,)
             
-            #####################################
-            # Events
-            #####################################
-
-            # print("event ", die_throw_recognizer.which_event(), die_throw_recognizer.frame_num - die_throw_recognizer.last_event_frame)
-
+            # ====================================================
+            # Event recognition and animated overlays
+            # ====================================================
             if die_throw_recognizer.if_event:
                 event_overlay.add_event(
                     f"THROW: {die_throw_recognizer.which_event()}",
@@ -267,11 +282,10 @@ def main():
                     duration=70
                 )
 
+            # Draw all active animated events
+            output_frame = event_overlay.draw(output_frame)
 
-
-
-                        
-            output_frame = event_overlay.draw(output_frame) 
+            # Write frame to output video
             output_writer.write(output_frame)
 
         cap.release()

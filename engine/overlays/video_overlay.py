@@ -1,9 +1,15 @@
 import cv2
 import numpy as np
+
 from detectors.die_handler import Die_handler
 
 class VideoOverlay:
-    # a class with all that is needed to create a visual overlay on the video with the game state and event notifiers (if get's too large m,aybe better to create separate functions in some file / files)
+    """
+    Utility class for creating visual overlays on video frames
+    to visualize game state, pawns, dice, board, and event notifications.
+    Each method returns a copy of the frame with the overlay applied.
+    """
+
     @staticmethod
     def draw_green_pawn_circles(frame, pawn_centers):
         frame = frame.copy()

@@ -8,14 +8,14 @@ class Die_handler():
     
     @staticmethod
     def count_num_on_die(img_hsv, pts):
-        #Create mask for the die polygon
+        # Create mask for the die polygon
         mask_die = np.zeros(img_hsv.shape[:2], dtype=np.uint8)
         cv2.fillPoly(mask_die, [pts], 255)
 
         # Extract die region from original image
         die_region = cv2.bitwise_and(img_hsv, img_hsv, mask=mask_die)
 
-        #  Convert to grayscale for circle detection
+        # Convert to grayscale for circle detection
         die_gray = cv2.cvtColor(die_region, cv2.COLOR_HSV2BGR)
         die_gray = cv2.cvtColor(die_gray, cv2.COLOR_BGR2GRAY)
 
@@ -23,7 +23,7 @@ class Die_handler():
         
         _, die_thresh = cv2.threshold(die_gray, 80, 255, cv2.THRESH_BINARY_INV)
 
-        #  Detect circles using Hough Transform
+        # Detect circles using Hough Transform
         circles = cv2.HoughCircles(
             die_thresh,
             cv2.HOUGH_GRADIENT,
@@ -53,7 +53,8 @@ class Die_handler():
     def update(self, frame_bgr, pts):
         frame_hsv = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2HSV)
         num_pips, circles = self.count_num_on_die(frame_hsv, pts)
-        #uwzględnione też zerowe wyniki np kiedy kość się toczy
+        
+        # also takes into account zero results, e.g. when the die is rolling
         if num_pips > 0:
             self.number = num_pips #self.num_on_die_with_memory(num_pips)
             self.circles = np.round(circles[0]).astype(int) #self.circles_on_die_with_memory(circles)
