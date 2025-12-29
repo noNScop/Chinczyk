@@ -35,7 +35,7 @@ def main():
     # Perform heavy computations only once every SKIP_FRAMES frames
     # (e.g. expensive warping / overlays that do not need per-frame updates)
 
-    SKIP_FRAMES = 10
+    SKIP_FRAMES = 3
 
     # Input videos to process
     videos = input_videos()

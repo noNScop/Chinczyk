@@ -56,12 +56,12 @@ class LeaveBaseRecognizer():
             return False
         
         # Check if blue pawn left its base (position 0)
-        if 0 not in self.pawn_state.previous_positions and 0 in self.pawn_state.positions and self.pawn_state.positions[0] == "blue":
+        if self.pawn_state.turn_state.turn == 0 and 0 not in self.pawn_state.previous_positions and 0 in self.pawn_state.positions and self.pawn_state.positions[0] == "blue":
             self.player = "Blue"
             return True
         
         # Check if green pawn left its base (position 20)
-        elif 20 not in self.pawn_state.previous_positions and 20 in self.pawn_state.positions and self.pawn_state.positions[20] == "green":
+        elif self.pawn_state.turn_state.turn == 1 and 20 not in self.pawn_state.previous_positions and 20 in self.pawn_state.positions and self.pawn_state.positions[20] == "green":
             self.player = "Green"
             return True
         return False

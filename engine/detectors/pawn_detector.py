@@ -50,7 +50,7 @@ class PawnDetector:
         mask = PawnDetector._green_mask(
             frame_bgr,
             low=[80, 100, 0],
-            high=[100, 255, 160],
+            high=[95, 255, 160],
         )
         return PawnDetector._get_coords(frame_bgr, mask, "green")
 
