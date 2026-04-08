@@ -1,5 +1,5 @@
 ### Description
-CV System for Automatic Gameplay Analysis of the LUDO Board Game (GitHub)
+CV System for Automatic Gameplay Analysis of the LUDO Board Game
 - Detection and tracking of the board, pawns, player turns, and dice
 - Board image normalization – independence from camera movement and varying recording angles
 - Event recognition (dice roll, pawn capture, entering/exiting base and home; game start/end) using temporal stabilization
