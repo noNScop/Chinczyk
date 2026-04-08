@@ -1,10 +1,10 @@
-## opis
-**System CV do automatycznej analizy rozgrywki gry LUDO (github)
-**
-- Detekcja i tracking planszy, pionków, tury gracza i kości 
-- Normalizacja obrazu planszy – uniezależnienie od ruchów kamerą i zmienny kąta nagrywania.
-- Events recognition (rzut kością, zbicie pionkóœ, wejsćie/wyjście z bazy i domku; rozpoczęcie/koniec rozgrywki) z użyciem stabilizacji czasowej.
-- Odporność na zmienne oświetlenie i refleksje światła.
+### Description
+CV System for Automatic Gameplay Analysis of the LUDO Board Game (GitHub)
+- Detection and tracking of the board, pawns, player turns, and dice
+- Board image normalization – independence from camera movement and varying recording angles
+- Event recognition (dice roll, pawn capture, entering/exiting base and home; game start/end) using temporal stabilization
+- Robustness to variable lighting conditions and light reflections
 
-## Raport z opisem projektu i nagrania- 
-https://drive.google.com/drive/folders/1JFQKMsUl_2l8ByoiBhIEp4a01I7Od9OW
+Report with Project Description and Recordings can be found
+[here
+](https://drive.google.com/drive/u/0/folders/1-f3wppDgiyoU0R51wc2Z0PjQu6qizYlA)
